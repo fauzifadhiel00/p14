@@ -52,20 +52,19 @@ Sesuai 4 pilar ketentuan penugasan:
 
 Secara umum, cara kerja sistem dari awal pengguna memasukkan data balita sampai mendapatkan saran nutrisi terbagi dalam 4 langkah mudah:
 
+```
 
-    A["1. Input Data Balita<br/>(Nama, Umur, Gender, TB, BB)"] --> B["2. Pemrosesan Data di Django"]
-    
-    subgraph Proses ["Proses Cerdas di Backend"]
-        B --> C["Model Machine Learning<br/>(Random Forest)<br/>Prediksi Status Stunting"]
-        B --> D["Standar WHO & Kemenkes<br/>Hitung Deviasi & Z-Score<br/>(Wasting & Underweight)"]
-    end
-    
-    C --> E["3. Simpan ke Database SQLite<br/>(Tabel PemeriksaanBalita)"]
-    D --> E
-    
-    E --> F["4. Tampilkan Hasil di Layar"]
-    F --> G["Grafik Dashboard & Riwayat Otomatis Terupdate"]
-    F --> H["Konsultasi AI (Google Gemini)<br/>Tanya Jawab & Rekomendasi Menu MPASI"]
+[Diagram Mermaid]
+
+## Penjelasan Workflow
+
+1. Input Data Balita
+2. Pemrosesan Data
+3. Analisis Status Gizi
+4. Penyimpanan Data
+5. Menampilkan Hasil Pemeriksaan
+6. Dashboard dan Riwayat
+7. Konsultasi AI
 ```
 
 ### Penjelasan Tahapan Alur Kerja:
