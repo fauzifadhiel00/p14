@@ -53,18 +53,21 @@ Sesuai 4 pilar ketentuan penugasan:
 Secara umum, cara kerja sistem dari awal pengguna memasukkan data balita sampai mendapatkan saran nutrisi terbagi dalam 4 langkah mudah:
 
 ```
+flowchart TD
+    A["Input Data Balita<br/>(Nama, Umur, Gender, TB, BB)"] --> B["Pemrosesan Data"]
 
-[Diagram Mermaid]
+    subgraph Proses ["Proses Pengolahan Data"]
+        B --> C["Analisis Stunting<br/>(Random Forest)"]
+        B --> D["Analisis Wasting & Underweight<br/>(Standar WHO dan Kemenkes)"]
+    end
 
-## Penjelasan Workflow
+    C --> E["Simpan Hasil Pemeriksaan<br/>(Database SQLite)"]
+    D --> E
 
-1. Input Data Balita
-2. Pemrosesan Data
-3. Analisis Status Gizi
-4. Penyimpanan Data
-5. Menampilkan Hasil Pemeriksaan
-6. Dashboard dan Riwayat
-7. Konsultasi AI
+    E --> F["Tampilkan Hasil Pemeriksaan"]
+    F --> G["Dashboard dan Riwayat"]
+    F --> H["Konsultasi AI<br/>(Google Gemini dan Rekomendasi MPASI)"]
+
 ```
 
 ### Penjelasan Tahapan Alur Kerja:
