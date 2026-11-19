@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block title %}Prediksi Status Gizi Antropometri (TB & BB) - Si-Cerdas{% endblock %}
+
+{% block header_title %}
+<h1 class="h4 fw-bold mb-0" style="color: var(--text-heading);">Prediksi Status Gizi Balita</h1>
+<p class="small text-muted mb-0">Deteksi ganda: Stunting (Random Forest ML) & Wasting (Z-Score Baku WHO)</p>
+{% endblock %}
+
+{% block content %}
+{% if error_msg %}
+<div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i> {{ error_msg }}
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <!-- =========================================================================
+         LEFT: CLEAN FORM INPUT CARD
+         ========================================================================= -->
+    <div class="col-lg-5">
+        <div class="bento-card">
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom"
+                style="border-color: var(--border-color) !important;">
+                <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                    <i class="bi bi-pencil-square text-primary me-2"></i>Input Data Balita
+                </h2>
+            </div>
+
+            {% if hasil %}
+            <!-- Alert Berhasil Simpan & Form Reset -->
+            <div class="alert alert-success d-flex align-items-center gap-2 py-2 px-3 mb-3 rounded-3 border-0 small"
+                style="background: var(--color-success-bg); color: var(--color-success);">
+                <i class="bi bi-check-circle-fill fs-5"></i>
+                <div>
+                    Data balita <strong>{{ hasil.nama }}</strong> berhasil diproses. Formulir telah
+                    di-reset untuk input berikutnya.
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{% url 'prediksi' %}">
+                {% csrf_token %}
+
+                <!-- Nama Balita -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold" style="color: var(--text-heading);">Nama Balita /
+                        Subjek:</label>
+                    <input type="text" name="nama" class="form-control rounded-3"
+                        style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-heading);"
+                        placeholder="Contoh: Ahmad Pratama" value="{{ input_form.nama|default:'' }}" required>
+                </div>
+
+                <!-- Gender -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold" style="color: var(--text-heading);">Jenis Kelamin:</label>
+                    <select name="gender" class="form-select rounded-3" style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-heading);">
+                        <option value="laki-laki" {% if input_form.gender == 'laki-laki' or not input_form.gender %}selected{% endif %}>Laki-laki</option>
+                        <option value="perempuan" {% if input_form.gender == 'perempuan' %}selected{% endif %}>Perempuan</option>
+                    </select>
+                </div>
+
+                <!-- Wilayah Kab/Kota Jabar -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold" style="color: var(--text-heading);">Wilayah Kabupaten/Kota (Jawa Barat):</label>
+                    <select name="kabupaten_kota" class="form-select rounded-3" style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-heading);">
+                        {% for k in all_kab %}
+                        <option value="{{ k }}" {% if input_form.kabupaten_kota == k %}selected{% endif %}>{{ k }}</option>
+                        {% empty %}
+                        <option value="KABUPATEN BOGOR">KABUPATEN BOGOR</option>
+                        <option value="KOTA BANDUNG">KOTA BANDUNG</option>
+                        <option value="KOTA BEKASI">KOTA BEKASI</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Usia Balita Slider -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label small fw-bold mb-0" style="color: var(--text-heading);">Usia Balita
+                            (Bulan):</label>
+                        <span class="pill-badge pill-blue" id="umurBadge">{{ input_form.umur|default:12 }} Bulan</span>
+                    </div>
+                    <input type="range" name="umur" class="form-range" min="0" max="60" step="1" id="umurRange"
+                        value="{{ input_form.umur|default:12 }}"
+                        oninput="document.getElementById('umurBadge').innerText = this.value + ' Bulan'">
+                    <div class="d-flex justify-content-between" style="font-size: 0.74rem; color: var(--text-muted);">
+                        <span>0 Bulan (Lahir)</span>
+                        <span>24 Bln (2 Thn)</span>
+                        <span>60 Bln (5 Thn)</span>
+                    </div>
+                </div>
+
+                <!-- Tinggi Badan & Berat Badan (2 Kolom Bersih) -->
+                <div class="row g-2 mb-4">
+                    <div class="col-6">
+                        <label class="form-label small fw-bold" style="color: var(--text-heading);">Tinggi Badan
+                            (cm):</label>
+                        <div class="input-group">
+                            <input type="number" step="0.1" name="tinggi" min="30.0" max="130.0"
+                                class="form-control rounded-start-3"
+                                style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-heading);"
+                                placeholder="Contoh: 75.0" value="{{ input_form.tinggi|default:'' }}" required>
+                            <span class="input-group-text small fw-bold"
+                                style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-muted);">cm</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-bold" style="color: var(--text-heading);">Berat Badan
+                            (kg):</label>
+                        <div class="input-group">
+                            <input type="number" step="0.05" name="berat" min="1.5" max="45.0"
+                                class="form-control rounded-start-3"
+                                style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-heading);"
+                                placeholder="Contoh: 9.0" value="{{ input_form.berat|default:'' }}" required>
+                            <span class="input-group-text small fw-bold"
+                                style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-muted);">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit"
+                        class="btn btn-primary flex-grow-1 py-3 rounded-3 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm">
+                        <i class="bi bi-cpu-fill"></i>
+                        <span>Jalankan Diagnosis Cerdas</span>
+                    </button>
+                    <a href="{% url 'prediksi' %}"
+                        class="btn btn-outline-secondary px-3 rounded-3 d-flex align-items-center justify-content-center"
+                        title="Reset Formulir">
+                        <i class="bi bi-arrow-counterclockwise fs-5"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         RIGHT: BENTO GRID RESULT CARD
+         ========================================================================= -->
+    <div class="col-lg-7">
+        <div class="bento-card">
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom"
+                style="border-color: var(--border-color) !important;">
+                <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                    <i class="bi bi-clipboard2-pulse-fill text-success me-2"></i>Hasil Diagnosis Antropometri Terpadu
+                </h2>
+                {% if not hasil %}
+                <span class="pill-badge pill-blue">Menunggu Input</span>
+                {% endif %}
+            </div>
+
+            {% if hasil %}
+            <!-- Subjek Header Bar -->
+            <div class="p-3 rounded-3 mb-4 d-flex flex-wrap justify-content-between align-items-center"
+                style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                <div>
+                    <h3 class="h6 fw-bold mb-1" style="color: var(--text-heading);">{{ hasil.nama }}</h3>
+                    <div class="small text-secondary">{{ hasil.umur }} Bulan · {{ hasil.gender|capfirst }} · <span
+                            class="fw-bold text-primary">{{ hasil.kabupaten_kota|default:"Jawa Barat" }}</span></div>
+                </div>
+                <div class="d-flex gap-2 mt-2 mt-sm-0">
+                    <span class="pill-badge pill-blue">TB: {{ hasil.tinggi }} cm</span>
+                    <span class="pill-badge pill-blue">BB: {{ hasil.berat }} kg</span>
+                </div>
+            </div>
+
+            <!-- Bento Mini Grid (Status Stunting vs Wasting) -->
+            <div class="row g-3 mb-4">
+                <!-- Stunting Box (ML) -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100"
+                        style="border: 1px solid var(--border-color); background: var(--bg-card-subtle);">
+                        <span class="text-uppercase fw-bold d-block mb-2 text-secondary"
+                            style="font-size: 0.74rem; letter-spacing: 0.04em;">1. Status Stunting (TB/U -
+                            Kronis):</span>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            {% if hasil.status == 'normal' %}
+                            <span class="pill-badge pill-green fw-bold fs-6"><i class="bi bi-check-circle-fill"></i>
+                                NORMAL</span>
+                            {% elif hasil.status == 'tinggi' %}
+                            <span class="pill-badge pill-blue fw-bold fs-6"><i class="bi bi-arrow-up-circle-fill"></i>
+                                TINGGI</span>
+                            {% elif hasil.status == 'stunted' %}
+                            <span class="pill-badge pill-amber fw-bold fs-6"><i
+                                    class="bi bi-exclamation-triangle-fill"></i> STUNTED</span>
+                            {% else %}
+                            <span class="pill-badge pill-red fw-bold fs-6"><i
+                                    class="bi bi-exclamation-octagon-fill"></i> SEVERELY STUNTED</span>
+                            {% endif %}
+                        </div>
+                        <div class="small text-secondary">Deviasi vs Median WHO: <strong class="{% if hasil.selisih >= 0 %}text-success{% else %}text-danger{% endif %}">{% if hasil.selisih > 0 %}+{% endif %}{{ hasil.selisih }} cm</strong></div>
+                    </div>
+                </div>
+
+                <!-- Wasting Box (Z-Score) -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded-3 h-100"
+                        style="border: 1px solid var(--border-color); background: var(--bg-card-subtle);">
+                        <span class="text-uppercase fw-bold d-block mb-2 text-secondary"
+                            style="font-size: 0.74rem; letter-spacing: 0.04em;">2. Status Wasting (BB/TB - Akut):</span>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            {% if hasil.wasting.kategori_singkat == 'normal' %}
+                            <span class="pill-badge pill-green fw-bold fs-6">{{ hasil.wasting.status }}</span>
+                            {% elif hasil.wasting.kategori_singkat == 'wasted' %}
+                            <span class="pill-badge pill-amber fw-bold fs-6">{{ hasil.wasting.status }}</span>
+                            {% else %}
+                            <span class="pill-badge pill-red fw-bold fs-6">{{ hasil.wasting.status }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="small text-secondary">Z-Score: <strong style="color: var(--text-heading);">{{ hasil.wasting.z_score }} SD</strong> <span class="text-muted">(Ideal: {{ hasil.wasting.ideal_bb }} kg)</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evaluasi Komposit Malnutrisi -->
+            <div class="p-3 rounded-3 mb-4"
+                style="background: var(--blue-light); border: 1px solid var(--blue-border);">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-heart-pulse-fill text-primary"></i>
+                    <h3 class="h6 fw-bold mb-0 text-primary">Evaluasi Komposit Malnutrisi: {{ hasil.komposit.ringkasan }}</h3>
+                </div>
+                <p class="small mb-0" style="color: var(--text-body);">{{ hasil.komposit.pesan }}</p>
+            </div>
+
+            <!-- Action Buttons: Reset & Konsultasi AI -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <a href="{% url 'prediksi' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold">
+                    <i class="bi bi-plus-lg me-1"></i> Reset / Input Balita Baru
+                </a>
+                <div class="d-flex gap-2">
+                    <a href="{% url 'riwayat' %}" class="btn btn-sm btn-outline-info rounded-pill px-3 fw-semibold">
+                        <i class="bi bi-clock-history me-1"></i> Buka Riwayat
+                    </a>
+                    <a href="{% url 'ai_advisor' %}" class="btn btn-sm btn-primary rounded-pill px-4 fw-bold">
+                        <i class="bi bi-chat-heart-fill me-1"></i> Konsultasi AI
+                    </a>
+                </div>
+            </div>
+
+            {% else %}
+            <!-- Empty State Placeholder -->
+            <div class="text-center py-5">
+                <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3"
+                    style="width: 72px; height: 72px; background: var(--bg-card-subtle); color: var(--blue-primary);">
+                    <i class="bi bi-clipboard2-pulse fs-1"></i>
+                </div>
+                <h3 class="h6 fw-bold" style="color: var(--text-heading);">Belum Ada Data yang Dihitung</h3>
+                <p class="small text-muted mb-0" style="max-width: 380px; margin: 0 auto;">
+                    Isi formulir antropometri di sebelah kiri untuk menghitung klasifikasi stunting via Machine Learning
+                    dan Z-score Wasting secara instan.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

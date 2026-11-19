@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block title %}Informasi Proyek & Arsitektur - Si-Cerdas{% endblock %}
+
+{% block header_title %}
+<h1 class="h4 fw-bold mb-0" style="color: var(--text-heading);">Informasi Proyek & Arsitektur</h1>
+<p class="small text-muted mb-0">Dokumentasi pengembangan aplikasi web Sistem Cerdas berbasis Django, Machine Learning & Standardisasi Antropometri</p>
+{% endblock %}
+
+{% block content %}
+<!-- =========================================================================
+     ROW 1: LATAR BELAKANG (KIRI) & PROFIL PENGEMBANG + TECH STACK (KANAN)
+     ========================================================================= -->
+<div class="row g-4 mb-4">
+    <!-- Latar Belakang & Urgensi Solusi -->
+    <div class="col-lg-7">
+        <div class="bento-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: var(--border-color) !important;">
+                    <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-bullseye text-primary me-2"></i>Latar Belakang & Urgensi Solusi
+                    </h2>
+                </div>
+                <p class="small leading-relaxed mb-3" style="color: var(--text-body);">
+                    Stunting adalah kondisi gagal tumbuh kembang pada balita akibat kekurangan gizi kronis dan infeksi berulang selama <strong>1000 Hari Pertama Kehidupan (HPK)</strong>. Deteksi dini secara akurat, objektif, dan terpadu sangat krusial agar intervensi nutrisi dapat diberikan sebelum terjadi kerusakan kognitif permanen.
+                </p>
+                <p class="small leading-relaxed mb-3" style="color: var(--text-body);">
+                    Aplikasi <strong>Si-Cerdas Balita</strong> mengotomatisasi klasifikasi antropometri linier (TB/U) menggunakan <em>Random Forest Classifier</em> (akurasi uji 99.9%), mengevaluasi indeks defisit massa akut (BB/TB - Wasting) via Z-Score baku WHO MGRS, serta menyajikan rekomendasi nutrisi berbasis protein hewani ganda via Google Gemini AI.
+                </p>
+            </div>
+            
+            <div class="p-3 rounded-3" style="background: var(--blue-light); border: 1px solid var(--blue-border);">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-shield-check text-primary"></i>
+                    <span class="small fw-bold text-primary">Standar Medis Baku:</span>
+                </div>
+                <div class="small" style="color: var(--text-body); font-size: 0.78rem;">
+                    Berdasarkan Permenkes No. 2 Tahun 2020 tentang Standar Antropometri Anak dan Kurva Pertumbuhan WHO Child Growth Standards (0–60 Bulan).
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Identitas Pengembang & Tech Stack -->
+    <div class="col-lg-5">
+        <div class="bento-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: var(--border-color) !important;">
+                    <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-person-badge-fill text-primary me-2"></i>Identitas Pengembang
+                    </h2>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 52px; height: 52px; background: var(--blue-light); color: var(--blue-primary); border: 2px solid var(--blue-border);">
+                        <i class="bi bi-person-fill fs-3"></i>
+                    </div>
+                    <div>
+                        <h3 class="h6 fw-bold mb-0" style="color: var(--text-heading);">Fadhiel Fauzi Firoos</h3>
+                        <div class="small text-muted">NIM: <strong>253307020</strong> · Prodi D3 Teknologi Informasi</div>
+                        <div class="small text-primary fw-semibold">Politeknik Negeri Madiun (PNM)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tech Stack Badges -->
+            <div>
+                <span class="text-uppercase fw-bold text-muted d-block mb-2" style="font-size: 0.72rem; letter-spacing: 0.04em;">Komponen Teknologi:</span>
+                <div class="d-flex flex-wrap gap-1">
+                    <span class="pill-badge pill-blue">Python 3.13</span>
+                    <span class="pill-badge pill-blue">Django 6.1</span>
+                    <span class="pill-badge pill-blue">SQLite3</span>
+                    <span class="pill-badge pill-blue">Scikit-Learn</span>
+                    <span class="pill-badge pill-blue">Google Gemini AI</span>
+                    <span class="pill-badge pill-blue">Chart.js</span>
+                    <span class="pill-badge pill-blue">Bootstrap 5</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     ROW 2: SPESIFIKASI ML PIPELINE (KIRI) & DATABASE SQLITE (KANAN)
+     ========================================================================= -->
+<div class="row g-4">
+    <!-- Spesifikasi Machine Learning Pipeline -->
+    <div class="col-lg-6">
+        <div class="bento-card h-100">
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: var(--border-color) !important;">
+                <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                    <i class="bi bi-cpu-fill text-primary me-2"></i>Spesifikasi Model Machine Learning
+                </h2>
+            </div>
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold" style="width: 38%;">Algoritma</td>
+                            <td><strong class="text-primary">Random Forest Classifier</strong> (Ensemble of 100 Trees)</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Fitur Masukan (Input)</td>
+                            <td><code>Umur (bulan)</code>, <code>Jenis Kelamin</code>, <code>Tinggi Badan (cm)</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Kelas Target</td>
+                            <td><code>normal</code>, <code>stunted</code>, <code>severely stunted</code>, <code>tinggi</code></td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Performa Model</td>
+                            <td>
+                                Akurasi Latih: <strong>100.0%</strong> &bull; Akurasi Uji: <strong>99.9%</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Serialisasi Model</td>
+                            <td>Dibekukan ke <code>model_stunting.joblib</code> (dimuat otomatis di memori server)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sumber Data & Database SQLite -->
+    <div class="col-lg-6">
+        <div class="bento-card h-100">
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom" style="border-color: var(--border-color) !important;">
+                <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                    <i class="bi bi-database-fill text-primary me-2"></i>Sumber Data & Arsitektur Database (SQLite)
+                </h2>
+            </div>
+
+            <div class="table-responsive">
+                <table class="custom-table">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold" style="width: 38%;">Data Surveilans Wilayah</td>
+                            <td>
+                                <strong>Dinas Kesehatan Provinsi Jawa Barat (2023–2025)</strong><br>
+                                <span class="small text-muted">&bull; 81 Baris Data Stunting (TB/U)</span><br>
+                                <span class="small text-muted">&bull; 81 Baris Data Gizi Kurang (BB/U)</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Dataset Latih AI</td>
+                            <td>
+                                <strong>120.999 profil antropometri balita</strong><br>
+                                <span class="small text-muted">Kaggle Dataset Hub (Author: Rendi Putra - CC BY-SA 4.0)</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">Pencatatan Real-Time</td>
+                            <td>
+                                Tabel <code>PemeriksaanBalita</code> di database lokal <code>db.sqlite3</code> (live input via form web)
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

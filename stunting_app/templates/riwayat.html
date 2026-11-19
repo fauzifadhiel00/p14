@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+
+{% block title %}Riwayat Pemeriksaan Balita Real-Time - Si-Cerdas{% endblock %}
+
+{% block header_title %}
+<h1 class="h4 fw-bold mb-0" style="color: var(--text-heading);">Riwayat Pemeriksaan Balita</h1>
+<p class="small text-muted mb-0">Pencatatan penimbangan balita Posyandu & hasil klasifikasi status gizi</p>
+{% endblock %}
+
+{% block content %}
+<!-- =========================================================================
+     TOOLBAR: PENCARIAN, FILTER & INPUT BALITA BARU
+     ========================================================================= -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="bento-card">
+            <form method="GET" action="{% url 'riwayat' %}" class="row g-3 align-items-center mb-0">
+                <!-- Input Pencarian -->
+                <div class="col-md-4">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-body-tertiary border-end-0" style="border-color: var(--border-color);">
+                            <i class="bi bi-search text-muted"></i>
+                        </span>
+                        <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm border-start-0" placeholder="Cari nama balita atau kabupaten..." style="border-color: var(--border-color);" aria-label="Cari nama balita">
+                    </div>
+                </div>
+
+                <!-- Filter Status Stunting/Gizi -->
+                <div class="col-sm-6 col-md-3">
+                    <select name="status" class="form-select form-select-sm" style="border-color: var(--border-color);" aria-label="Filter status gizi">
+                        <option value="" {% if not status_filter %}selected{% endif %}>Semua Status Stunting</option>
+                        <option value="normal" {% if status_filter == 'normal' %}selected{% endif %}>Normal</option>
+                        <option value="stunted" {% if status_filter == 'stunted' %}selected{% endif %}>Stunted (Pendek)</option>
+                        <option value="severely stunted" {% if status_filter == 'severely stunted' %}selected{% endif %}>Severely Stunted (Sangat Pendek)</option>
+                        <option value="tinggi" {% if status_filter == 'tinggi' %}selected{% endif %}>Tinggi</option>
+                        <option value="wasted" {% if status_filter == 'wasted' %}selected{% endif %}>Kasus Wasting (BB/TB)</option>
+                    </select>
+                </div>
+
+                <!-- Filter Gender -->
+                <div class="col-sm-6 col-md-2">
+                    <select name="gender" class="form-select form-select-sm" style="border-color: var(--border-color);" aria-label="Filter gender">
+                        <option value="" {% if not gender_filter %}selected{% endif %}>Semua Gender</option>
+                        <option value="laki-laki" {% if gender_filter == 'laki-laki' %}selected{% endif %}>Laki-laki</option>
+                        <option value="perempuan" {% if gender_filter == 'perempuan' %}selected{% endif %}>Perempuan</option>
+                    </select>
+                </div>
+
+                <!-- Tombol Aksi Filter & Tambah -->
+                <div class="col-md-3 d-flex gap-2 justify-content-md-end">
+                    <button type="submit" class="btn btn-sm btn-outline-primary fw-semibold px-3">
+                        <i class="bi bi-funnel-fill me-1"></i> Saring
+                    </button>
+                    {% if q or status_filter or gender_filter %}
+                    <a href="{% url 'riwayat' %}" class="btn btn-sm btn-outline-secondary px-2" title="Reset Filter">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                    {% endif %}
+                    <a href="{% url 'prediksi' %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap">
+                        <i class="bi bi-plus-lg me-1"></i> Input Balita Baru
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     TABEL LOG RIWAYAT PEMERIKSAAN FULL SCREEN (COL-12)
+     ========================================================================= -->
+<div class="row">
+    <div class="col-12">
+        <div class="bento-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-3 border-bottom" style="border-color: var(--border-color) !important;">
+                <div>
+                    <h2 class="h6 fw-bold mb-1" style="color: var(--text-heading);">
+                        <i class="bi bi-journal-medical text-primary me-2"></i>Daftar Riwayat Rekam Medis Balita
+                    </h2>
+                    <span class="small text-muted">
+                        Menampilkan <strong>{{ total_filtered }}</strong> dari total <strong>{{ realtime_summary.total }}</strong> catatan pemeriksaan
+                    </span>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="custom-table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">No</th>
+                            <th>Waktu Rekam</th>
+                            <th>Identitas Balita</th>
+                            <th>Antropometri</th>
+                            <th>Wilayah</th>
+                            <th>Status Stunting (TB/U)</th>
+                            <th>Status Gizi (BB/U & BB/TB)</th>
+                            <th>Evaluasi Komposit</th>
+                            <th class="text-end" style="width: 140px;">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in pemeriksaan_list %}
+                        <tr>
+                            <!-- No -->
+                            <td class="text-muted fw-semibold" style="font-size: 0.8rem;">
+                                {{ forloop.counter }}
+                            </td>
+
+                            <!-- Waktu -->
+                            <td style="font-size: 0.8rem; white-space: nowrap;">
+                                <div class="fw-semibold" style="color: var(--text-heading);">{{ rec.created_at|date:"d M Y" }}</div>
+                                <div class="text-muted" style="font-size: 0.72rem;"><i class="bi bi-clock me-1"></i>{{ rec.created_at|date:"H:i" }} WIB</div>
+                            </td>
+
+                            <!-- Identitas -->
+                            <td>
+                                <strong style="color: var(--text-heading); font-size: 0.92rem;">{{ rec.nama }}</strong>
+                                <div class="text-muted d-flex align-items-center gap-2 mt-1" style="font-size: 0.76rem;">
+                                    {% if rec.gender == 'laki-laki' %}
+                                    <span class="badge bg-primary-subtle text-primary py-0 px-2 rounded-pill"><i class="bi bi-gender-male me-1"></i>Laki-laki</span>
+                                    {% else %}
+                                    <span class="badge bg-danger-subtle text-danger py-0 px-2 rounded-pill"><i class="bi bi-gender-female me-1"></i>Perempuan</span>
+                                    {% endif %}
+                                    <span>· <strong>{{ rec.umur_bulan }}</strong> Bulan</span>
+                                </div>
+                            </td>
+
+                            <!-- Antropometri -->
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <div>
+                                        <span class="text-muted" style="font-size: 0.72rem;">TB:</span>
+                                        <strong style="color: var(--text-heading); font-size: 0.85rem;">{{ rec.tinggi_badan }} cm</strong>
+                                    </div>
+                                    <div>
+                                        <span class="text-muted" style="font-size: 0.72rem;">BB:</span>
+                                        <strong style="color: var(--text-heading); font-size: 0.85rem;">{{ rec.berat_badan }} kg</strong>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Wilayah -->
+                            <td>
+                                <span class="pill-badge pill-blue" style="font-size: 0.75rem;">
+                                    <i class="bi bi-geo-alt-fill me-1"></i>{{ rec.kabupaten_kota }}
+                                </span>
+                            </td>
+
+                            <!-- Status Stunting ML -->
+                            <td>
+                                {% if rec.status_stunting == "normal" %}
+                                <span class="pill-badge pill-green"><i class="bi bi-check-circle-fill me-1"></i>Normal</span>
+                                {% elif rec.status_stunting == "severely stunted" %}
+                                <span class="pill-badge pill-red"><i class="bi bi-exclamation-triangle-fill me-1"></i>Severely Stunted</span>
+                                {% elif rec.status_stunting == "stunted" %}
+                                <span class="pill-badge pill-amber"><i class="bi bi-exclamation-circle-fill me-1"></i>Stunted</span>
+                                {% else %}
+                                <span class="pill-badge pill-blue">{{ rec.status_stunting|title }}</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Status Gizi -->
+                            <td>
+                                <div class="d-flex flex-column gap-1">
+                                    <span class="small" style="font-size: 0.76rem;">
+                                        <span class="text-muted">BB/U:</span> <strong>{{ rec.status_underweight|default:"Normal" }}</strong>
+                                    </span>
+                                    <span class="small" style="font-size: 0.76rem;">
+                                        <span class="text-muted">BB/TB:</span> <strong>{{ rec.status_wasting|default:"Normal" }}</strong>
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- Evaluasi Komposit -->
+                            <td style="max-width: 200px;">
+                                <div class="small text-muted" style="font-size: 0.78rem; line-height: 1.4;" title="{{ rec.evaluasi_komposit }}">
+                                    {{ rec.evaluasi_komposit }}
+                                </div>
+                            </td>
+
+                            <!-- Aksi -->
+                            <td class="text-end">
+                                <div class="d-inline-flex gap-1 align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-info rounded-pill py-1 px-2" style="font-size: 0.72rem;" data-bs-toggle="modal" data-bs-target="#modalDetail{{ rec.id }}" title="Lihat Rekam Medis Lengkap">
+                                        <i class="bi bi-eye"></i> Detail
+                                    </button>
+                                    <a href="{% url 'ai_advisor' %}?id={{ rec.id }}" class="btn btn-sm btn-outline-primary rounded-pill py-1 px-2" style="font-size: 0.72rem;" title="Konsultasi Nutrisi AI untuk {{ rec.nama }}">
+                                        <i class="bi bi-chat-heart"></i> AI
+                                    </a>
+                                    <form method="POST" action="{% url 'hapus_pemeriksaan' rec.id %}" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus data pemeriksaan {{ rec.nama }}?');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill py-1 px-2" style="font-size: 0.72rem;" title="Hapus dari SQLite">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                                {% if q or status_filter or gender_filter %}
+                                <div class="fw-semibold">Tidak ditemukan data pemeriksaan balita yang sesuai filter pencarian.</div>
+                                <a href="{% url 'riwayat' %}" class="btn btn-sm btn-outline-secondary mt-2">Reset Filter</a>
+                                {% else %}
+                                <div class="fw-semibold">Belum ada rekaman penimbangan balita di database SQLite.</div>
+                                <div class="small text-muted mb-3">Lakukan penimbangan mandiri untuk menguji klasifikasi otomatis.</div>
+                                <a href="{% url 'prediksi' %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                                    <i class="bi bi-plus-lg me-1"></i> Mulai Pemeriksaan Baru
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- MODAL DETAIL REKAM MEDIS BALITA (DILUAR ELEMEN TABEL SUPAYA BERSIH) -->
+            {% for rec in pemeriksaan_list %}
+            <div class="modal fade text-start" id="modalDetail{{ rec.id }}" tabindex="-1" aria-labelledby="modalLabel{{ rec.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content" style="background-color: var(--bg-card); color: var(--text-body); border: 1px solid var(--border-color); border-radius: var(--card-radius); box-shadow: var(--card-shadow);">
+                        <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                            <h5 class="modal-title h6 fw-bold" id="modalLabel{{ rec.id }}" style="color: var(--text-heading);">
+                                <i class="bi bi-file-earmark-medical text-primary me-2"></i>Rekam Medis: {{ rec.nama }}
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="p-3 rounded-3 mb-3" style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <div class="small text-muted">Nama Balita</div>
+                                        <div class="fw-bold" style="color: var(--text-heading);">{{ rec.nama }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Jenis Kelamin</div>
+                                        <div class="fw-semibold">{{ rec.gender|title }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Usia</div>
+                                        <div class="fw-semibold">{{ rec.umur_bulan }} Bulan</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Wilayah Posyandu</div>
+                                        <div class="fw-semibold">{{ rec.kabupaten_kota }}</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Tinggi Badan (TB)</div>
+                                        <div class="fw-bold text-primary">{{ rec.tinggi_badan }} cm</div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small text-muted">Berat Badan (BB)</div>
+                                        <div class="fw-bold text-primary">{{ rec.berat_badan }} kg</div>
+                                    </div>
+                                    <div class="col-12 mt-2 pt-2 border-top" style="border-color: var(--border-color) !important;">
+                                        <div class="small text-muted">Waktu Pemeriksaan</div>
+                                        <div class="small">{{ rec.created_at|date:"l, d F Y - H:i:s" }} WIB</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small text-muted fw-bold text-uppercase d-block mb-1">Hasil Diagnosis Multi-Dimensi:</label>
+                                <div class="d-flex flex-wrap gap-2 mb-2">
+                                    <span class="badge bg-body-secondary text-body border p-2">
+                                        <strong>TB/U (Stunting):</strong> {{ rec.status_stunting|title }}
+                                    </span>
+                                    <span class="badge bg-body-secondary text-body border p-2">
+                                        <strong>BB/U (Underweight):</strong> {{ rec.status_underweight|default:"Normal" }}
+                                    </span>
+                                    <span class="badge bg-body-secondary text-body border p-2">
+                                        <strong>BB/TB (Wasting):</strong> {{ rec.status_wasting|default:"Normal" }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="p-3 rounded-3" style="background: rgba(37, 99, 235, 0.08); border-left: 4px solid var(--blue-primary);">
+                                <div class="small fw-bold text-primary mb-1">
+                                    <i class="bi bi-info-circle-fill me-1"></i> Evaluasi Klinis Komposit:
+                                </div>
+                                <div class="small" style="line-height: 1.5; color: var(--text-heading);">
+                                    {{ rec.evaluasi_komposit }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer" style="border-top: 1px solid var(--border-color);">
+                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                            <a href="{% url 'ai_advisor' %}?id={{ rec.id }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-robot me-1"></i> Buka Konsultasi AI
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,587 @@
+{% extends 'base.html' %}
+
+{% block title %}Rekomendasi Nutrisi Klinis & Konsultasi AI - Si-Cerdas{% endblock %}
+
+{% block extra_head %}
+<style>
+    #chatContainer {
+        scrollbar-width: thin;
+        scrollbar-color: var(--border-color) transparent;
+        scroll-behavior: smooth;
+    }
+
+    #chatContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #chatContainer::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #chatContainer::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}
+<h1 class="h4 fw-bold mb-0" style="color: var(--text-heading);">AI Nutritional Advisor</h1>
+<p class="small text-muted mb-0">Rekomendasi menu MPASI 1000 HPK & Tanya Jawab Klinis Interaktif</p>
+{% endblock %}
+
+{% block content %}
+<!-- =========================================================================
+     TOP ACTIVE SUBJECT BAR (BENTO CARD)
+     ========================================================================= -->
+<div class="bento-card mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <!-- Info Subjek -->
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="pill-badge pill-blue"><i class="bi bi-person-heart me-1"></i>Profil Subjek Aktif</span>
+                {% if is_custom_subjek %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1"
+                    style="font-size: 0.72rem;">
+                    <i class="bi bi-check-circle-fill me-1"></i>Data Riwayat Terpilih
+                </span>
+                {% else %}
+                <span class="badge bg-secondary-subtle text-secondary border px-2 py-1" style="font-size: 0.72rem;">
+                    <i class="bi bi-info-circle me-1"></i>Profil Baku Rujukan (Demo)
+                </span>
+                {% endif %}
+            </div>
+            <h2 class="h5 fw-bold mb-1" style="color: var(--text-heading);">
+                {{ subjek.nama }} <span class="fw-normal text-muted" style="font-size: 0.9rem;">({{ subjek.umur }}
+                    Bulan, {{ subjek.gender|title }})</span>
+            </h2>
+            <div class="small text-muted">
+                <span>Tinggi: <strong style="color: var(--text-heading);">{{ subjek.tinggi }} cm</strong> (Deviasi: {% if subjek.selisih >= 0 %}+{% endif %}{{ subjek.selisih }} cm)</span> &bull;
+                <span>Berat: <strong style="color: var(--text-heading);">{{ subjek.berat|default:"9.0" }} kg</strong> (Z-Score: <strong>{{ subjek.wasting.z_score|default:"0.0" }} SD</strong>)</span>
+                {% if subjek.kabupaten_kota %}
+                &bull; <span>Wilayah: <strong>{{ subjek.kabupaten_kota }}</strong></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Badges Status & Tombol Kontrol Subjek -->
+        <div class="d-flex flex-column align-items-sm-end gap-2">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                {% if subjek.status == 'normal' %}
+                <span class="pill-badge pill-green"><i class="bi bi-check-circle-fill"></i> Stunting: NORMAL</span>
+                {% elif subjek.status == 'tinggi' %}
+                <span class="pill-badge pill-blue"><i class="bi bi-arrow-up-circle-fill"></i> Stunting: TINGGI</span>
+                {% elif subjek.status == 'stunted' %}
+                <span class="pill-badge pill-amber"><i class="bi bi-exclamation-triangle-fill"></i> Stunting:
+                    STUNTED</span>
+                {% else %}
+                <span class="pill-badge pill-red"><i class="bi bi-exclamation-octagon-fill"></i> Stunting: SEVERELY
+                    STUNTED</span>
+                {% endif %}
+
+                <span class="pill-badge pill-blue">
+                    Wasting: {{ subjek.wasting.status|default:"Normal" }}
+                </span>
+
+                {% if subjek.komposit %}
+                <span
+                    class="pill-badge {% if subjek.komposit.badge == 'danger' %}pill-red{% elif subjek.komposit.badge == 'warning' %}pill-amber{% else %}pill-green{% endif %}">
+                    {{ subjek.komposit.ringkasan }}
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Tombol Aksi Kontrol Subjek (Reset & Pilih dari Riwayat) -->
+            <div class="d-flex flex-wrap gap-2 mt-1">
+                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3 fw-semibold"
+                    data-bs-toggle="modal" data-bs-target="#modalPilihBalita"
+                    title="Pilih balita lain dari riwayat pemeriksaan SQLite">
+                    <i class="bi bi-person-lines-fill me-1"></i> Pilih dari Riwayat
+                </button>
+                {% if is_custom_subjek %}
+                <a href="{% url 'ai_advisor' %}?reset=1"
+                    class="btn btn-sm btn-outline-danger rounded-pill px-3 fw-semibold"
+                    title="Reset subjek ke profil standar rujukan"
+                    onclick="return confirm('Reset profil subjek kembali ke profil standar rujukan?');">
+                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Subjek
+                </a>
+                {% endif %}
+                <a href="{% url 'prediksi' %}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-semibold"
+                    title="Input pemeriksaan baru">
+                    <i class="bi bi-plus-lg me-1"></i> Input Baru
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     MODAL PILIH SUBJEK DARI RIWAYAT SQLITE
+     ========================================================================= -->
+<div class="modal fade" id="modalPilihBalita" tabindex="-1" aria-labelledby="modalPilihLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content"
+            style="background-color: var(--bg-card); color: var(--text-body); border: 1px solid var(--border-color); border-radius: var(--card-radius);">
+            <div class="modal-header" style="border-bottom: 1px solid var(--border-color);">
+                <h5 class="modal-title h6 fw-bold" id="modalPilihLabel" style="color: var(--text-heading);">
+                    <i class="bi bi-journal-medical text-primary me-2"></i>Pilih Subjek Balita dari Riwayat SQLite
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                {% if riwayat_balita_list %}
+                <div class="table-responsive" style="max-height: 420px;">
+                    <table class="custom-table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Balita</th>
+                                <th>Antropometri</th>
+                                <th>Wilayah</th>
+                                <th>Status Stunting</th>
+                                <th>Status Wasting</th>
+                                <th class="text-end">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for b in riwayat_balita_list %}
+                            <tr {% if subjek.id == b.id %}style="background: rgba(37, 99, 235, 0.08);" {% endif %}>
+                                <td>
+                                    <strong style="color: var(--text-heading);">{{ b.nama }}</strong>
+                                    <div class="text-muted small" style="font-size: 0.74rem;">
+                                        {{ b.gender|title }} · {{ b.umur_bulan }} Bulan
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="fw-semibold">{{ b.tinggi_badan }} cm</span>
+                                    <div class="text-muted small" style="font-size: 0.74rem;">{{ b.berat_badan }} kg
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="small">{{ b.kabupaten_kota|truncatechars:18 }}</span>
+                                </td>
+                                <td>
+                                    {% if b.status_stunting == "normal" %}
+                                    <span class="pill-badge pill-green" style="font-size: 0.7rem;">Normal</span>
+                                    {% elif b.status_stunting == "severely stunted" %}
+                                    <span class="pill-badge pill-red" style="font-size: 0.7rem;">Severe</span>
+                                    {% elif b.status_stunting == "stunted" %}
+                                    <span class="pill-badge pill-amber" style="font-size: 0.7rem;">Stunted</span>
+                                    {% else %}
+                                    <span class="pill-badge pill-blue" style="font-size: 0.7rem;">{{ b.status_stunting }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="small" style="font-size: 0.74rem;">{{ b.status_wasting|truncatechars:18 }}</span>
+                                </td>
+                                <td class="text-end">
+                                    {% if subjek.id == b.id %}
+                                    <span class="badge bg-success text-white py-1 px-2 rounded-pill"
+                                        style="font-size: 0.72rem;">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Sedang Aktif
+                                    </span>
+                                    {% else %}
+                                    <a href="{% url 'ai_advisor' %}?id={{ b.id }}"
+                                        class="btn btn-sm btn-primary rounded-pill py-1 px-3"
+                                        style="font-size: 0.75rem;">
+                                        <i class="bi bi-check-lg me-1"></i> Pilih
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 text-secondary"></i>
+                    <p class="mb-2 fw-semibold">Belum ada rekaman riwayat balita di SQLite.</p>
+                    <a href="{% url 'prediksi' %}" class="btn btn-sm btn-primary rounded-pill px-3">
+                        <i class="bi bi-plus-lg me-1"></i> Input Balita Baru
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer d-flex justify-content-between" style="border-top: 1px solid var(--border-color);">
+                <a href="{% url 'riwayat' %}" class="btn btn-sm btn-outline-info rounded-pill px-3">
+                    <i class="bi bi-clock-history me-1"></i> Buka Halaman Riwayat Lengkap
+                </a>
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3"
+                    data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- =========================================================================
+         LEFT: EXPLAINABLE AI & PANDUAN NUTRISI 1000 HPK
+         ========================================================================= -->
+    <div class="col-lg-6">
+        <div class="bento-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom"
+                    style="border-color: var(--border-color) !important;">
+                    <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-diagram-3-fill text-primary me-2"></i>Landasan Klinis & Explainable AI (XAI)
+                    </h2>
+                    <span class="pill-badge pill-blue">WHO & Kemenkes</span>
+                </div>
+
+                <!-- Stunting Metric Row -->
+                <div class="p-3 rounded-3 mb-3"
+                    style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold small" style="color: var(--text-heading);">1. Pertumbuhan Linear (TB/U -
+                            Kronis)</span>
+                        <span class="badge bg-primary-subtle text-primary">Random Forest ML</span>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        Tinggi anak saat ini <strong>{{ subjek.tinggi }} cm</strong>. Standar median WHO untuk balita
+                        usia ini adalah <strong>{{ subjek.ideal }} cm</strong> (Ambang stunting: {{ subjek.min_normal }}
+                        cm).
+                    </div>
+                    <div class="progress" style="height: 8px; background: var(--border-color);">
+                        <div class="progress-bar {% if subjek.status == 'normal' %}bg-success{% elif subjek.status == 'stunted' %}bg-warning{% else %}bg-danger{% endif %}"
+                            role="progressbar" style="width: 75%;" aria-label="Progress pertumbuhan"></div>
+                    </div>
+                </div>
+
+                <!-- Wasting Metric Row -->
+                <div class="p-3 rounded-3 mb-3"
+                    style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold small" style="color: var(--text-heading);">2. Defisit Massa Akut (BB/TB -
+                            Wasting)</span>
+                        <span class="badge bg-info-subtle text-info">Standar Z-Score</span>
+                    </div>
+                    <div class="small text-muted mb-0">
+                        Berat badan saat ini <strong>{{ subjek.berat|default:"9.0" }} kg</strong> dengan Z-Score
+                        <strong>{{ subjek.wasting.z_score|default:"0.0" }} SD</strong>. Berat ideal proporsional menurut
+                        tinggi badan adalah <strong>{{ subjek.wasting.ideal_bb|default:"9.0" }} kg</strong>.
+                    </div>
+                </div>
+
+                <!-- Evaluasi Komposit Malnutrisi -->
+                {% if subjek.komposit %}
+                <div class="p-3 rounded-3 mb-3"
+                    style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-bold small" style="color: var(--text-heading);">3. Evaluasi Komposit
+                            Malnutrisi</span>
+                        <span class="pill-badge {% if subjek.komposit.badge == 'danger' %}pill-red{% elif subjek.komposit.badge == 'warning' %}pill-amber{% else %}pill-green{% endif %}">{{ subjek.komposit.level }}</span>
+                    </div>
+                    <div class="small text-secondary">{{ subjek.komposit.pesan }}</div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Protein Hewani Action Plan -->
+            <div class="p-3 rounded-3 mt-2"
+                style="background: var(--blue-light); border: 1px solid var(--blue-border);">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <i class="bi bi-shield-check text-primary fs-5"></i>
+                    <h3 class="h6 fw-bold mb-0 text-primary">Prinsip MPASI Protein Hewani Ganda</h3>
+                </div>
+                <p class="small mb-0" style="color: var(--text-body);">
+                    Untuk mengejar ketertinggalan tinggi badan (<em>catch-up growth</em>), kombinasikan minimal 2 sumber
+                    protein hewani setiap hari: <strong>Telur + Ikan Laut/Hati Ayam/Daging Sapi</strong>. Protein hewani
+                    kaya Zink, Zat Besi Heme, dan Asam Amino Esensial yang memicu pelepasan hormon pertumbuhan IGF-1.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         RIGHT: INTERACTIVE CHAT ADVISOR
+         ========================================================================= -->
+    <div class="col-lg-6">
+        <div class="bento-card h-100 d-flex flex-column">
+            <!-- Header Chat -->
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom flex-shrink-0"
+                style="border-color: var(--border-color) !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center"
+                        style="width: 32px; height: 32px; background: var(--blue-light); color: var(--blue-primary);">
+                        <i class="bi bi-robot"></i>
+                    </div>
+                    <div>
+                        <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">Konsultasi Interaktif AI</h2>
+                        <span class="text-muted" style="font-size: 0.72rem;">Konsultan Gizi & Tumbuh Kembang
+                            Balita</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAT BUBBLES CONTAINER (FIXED HEIGHT DENGAN INTERNAL SMOOTH SLIDE/SCROLL) -->
+            <div id="chatContainer" class="p-3 rounded-3 mb-3 flex-grow-1"
+                style="background: var(--bg-card-subtle); border: 1px solid var(--border-color); height: 350px; max-height: 350px; overflow-y: auto; scroll-behavior: smooth;">
+                <div class="d-flex gap-2 mb-3">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                        style="width: 32px; height: 32px; background: var(--blue-primary); color: #fff;">
+                        <i class="bi bi-hospital"></i>
+                    </div>
+                    <div class="p-3 rounded-3 shadow-sm"
+                        style="background: var(--bg-card); border: 1px solid var(--border-color); max-width: 88%;">
+                        <div class="fw-bold small mb-1" style="color: var(--blue-primary);">Dr. Cerdas (Konsultan Gizi):
+                        </div>
+                        <p class="small mb-0" style="color: var(--text-body);">
+                            Halo! Saya siap memberikan rekomendasi gizi dan nutrisi harian untuk balita <strong>{{ subjek.nama }}</strong> ({{ subjek.umur }} bulan). Silakan klik rekomendasi pertanyaan di bawah atau ketik langsung pertanyaan Anda.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REKOMENDASI PERTANYAAN / PESAN CEPAT (SLIDE HORIZONTAL) -->
+            <div class="mb-2 d-flex gap-2 flex-nowrap overflow-auto py-1 flex-shrink-0" style="scrollbar-width: thin;">
+                <button type="button" class="btn btn-sm py-1 px-3 rounded-pill text-nowrap"
+                    style="background: var(--bg-card-subtle); border: 1px solid var(--border-color); color: var(--text-body); font-size: 0.74rem;"
+                    onclick="pilihPrompt('Contoh jadwal dan menu MPASI kaya protein hewani ganda untuk usia balita ini?')">
+                    Menu MPASI Protein Ganda
+                </button>
+                <button type="button" class="btn btn-sm py-1 px-3 rounded-pill text-nowrap"
+                    style="background: var(--bg-card-subtle); border: 1px solid var(--border-color); color: var(--text-body); font-size: 0.74rem;"
+                    onclick="pilihPrompt('Bagaimana cara paling efektif mengejar defisit tinggi badan balita stunting?')">
+                    Kejar Tinggi Badan
+                </button>
+                <button type="button" class="btn btn-sm py-1 px-3 rounded-pill text-nowrap"
+                    style="background: var(--bg-card-subtle); border: 1px solid var(--border-color); color: var(--text-body); font-size: 0.74rem;"
+                    onclick="pilihPrompt('Apa saja tanda bahaya gagal tumbuh yang harus segera dibawa ke dokter?')">
+                    Tanda Bahaya Gagal Tumbuh
+                </button>
+            </div>
+
+            <!-- CHAT INPUT (STAYS AT THE BOTTOM) -->
+            <div class="flex-shrink-0">
+                <div class="input-group">
+                    <input type="text" id="chatInput" class="form-control rounded-start-3"
+                        style="background: var(--bg-card-subtle); border-color: var(--border-color); color: var(--text-heading);"
+                        placeholder="Tanyakan seputar menu MPASI, porsi makan, atau gizi..."
+                        onkeydown="if(event.key === 'Enter') kirimPesanChat();">
+                    <button class="btn btn-primary fw-bold px-4" type="button" id="btnKirimChat"
+                        onclick="kirimPesanChat()">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+                <div id="chatStatusAlert" class="mt-2 small text-danger" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     ROW 2: FAQ ACCORDION (KIRI) & 5 LANGKAH EMAS 1000 HPK (KANAN)
+     ========================================================================= -->
+<div class="row g-4">
+    <!-- FAQ Accordion (Kiri) -->
+    <div class="col-lg-7">
+        <div class="bento-card h-100">
+            <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom"
+                style="border-color: var(--border-color) !important;">
+                <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                    <i class="bi bi-patch-question-fill text-primary me-2"></i>Panduan Pertanyaan Klinis Terstruktur
+                </h2>
+                <span class="pill-badge pill-blue">Standar Kemenkes RI</span>
+            </div>
+
+            <div class="accordion" id="accordionAI">
+                {% for item in konsultasi_list %}
+                <div class="accordion-item mb-2 rounded-3 overflow-hidden"
+                    style="border: 1px solid var(--border-color); background: var(--bg-card);">
+                    <h3 class="accordion-header" id="heading{{ item.id }}">
+                        <button class="accordion-button {% if not forloop.first %}collapsed{% endif %} fw-semibold"
+                            style="background: var(--bg-card); color: var(--text-heading);" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#collapse{{ item.id }}"
+                            aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}">
+                            <i class="bi bi-question-circle text-primary me-2"></i> {{ item.tanya }}
+                        </button>
+                    </h3>
+                    <div id="collapse{{ item.id }}"
+                        class="accordion-collapse collapse {% if forloop.first %}show{% endif %}"
+                        data-bs-parent="#accordionAI">
+                        <div class="accordion-body small"
+                            style="background: var(--bg-card-subtle); color: var(--text-body);">
+                            {{ item.jawab }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 5 Langkah Emas Pencegahan Stunting (Kanan) -->
+    <div class="col-lg-5">
+        <div class="bento-card h-100 d-flex flex-column justify-content-between">
+            <div>
+                <div class="d-flex align-items-center justify-content-between mb-3 pb-2 border-bottom"
+                    style="border-color: var(--border-color) !important;">
+                    <h2 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-award-fill text-primary me-2"></i>5 Pilar Emas 1000 HPK
+                    </h2>
+                    <span class="pill-badge pill-green">Aksi Nyata</span>
+                </div>
+
+                <div class="d-flex flex-column gap-2 mb-3">
+                    <div class="p-2 px-3 rounded-3"
+                        style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                        <strong class="d-block small text-primary mb-1">1. Nutrisi Masa Kehamilan</strong>
+                        <span class="small text-muted" style="font-size: 0.78rem;">Konsumsi minimal 90 tablet tambah
+                            darah (TTD) dan asupan kalori padat nutrisi selama kehamilan.</span>
+                    </div>
+
+                    <div class="p-2 px-3 rounded-3"
+                        style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                        <strong class="d-block small text-primary mb-1">2. Inisiasi Menyusu Dini & ASI
+                            Eksklusif</strong>
+                        <span class="small text-muted" style="font-size: 0.78rem;">Pemberian ASI eksklusif selama 6
+                            bulan pertama tanpa tambahan makanan/minuman lain.</span>
+                    </div>
+
+                    <div class="p-2 px-3 rounded-3"
+                        style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                        <strong class="d-block small text-primary mb-1">3. MPASI Kaya Protein Hewani (6–23
+                            Bulan)</strong>
+                        <span class="small text-muted" style="font-size: 0.78rem;">Utamakan telur, ikan laut, dan hati
+                            ayam setiap hari dengan tekstur bertahap.</span>
+                    </div>
+
+                    <div class="p-2 px-3 rounded-3"
+                        style="background: var(--bg-card-subtle); border: 1px solid var(--border-color);">
+                        <strong class="d-block small text-primary mb-1">4. Sanitasi Air Bersih & Imunisasi</strong>
+                        <span class="small text-muted" style="font-size: 0.78rem;">Cegah infeksi cerna kronis (EED)
+                            melalui sanitasi higienis dan imunisasi dasar lengkap.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3 rounded-3" style="background: var(--blue-light); border: 1px solid var(--blue-border);">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <i class="bi bi-calendar-check text-primary"></i>
+                    <span class="small fw-bold text-primary">Pantau Tumbuh Kembang:</span>
+                </div>
+                <div class="small text-secondary" style="font-size: 0.76rem;">
+                    Bawa balita ke Posyandu setiap bulan untuk penimbangan berat dan pengukuran tinggi badan berkala.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let chatHistory = [];
+
+    function pilihPrompt(text) {
+        document.getElementById('chatInput').value = text;
+        document.getElementById('chatInput').focus();
+    }
+
+    async function kirimPesanChat() {
+        const input = document.getElementById('chatInput');
+        const pesan = input.value.trim();
+        const btn = document.getElementById('btnKirimChat');
+        const container = document.getElementById('chatContainer');
+        const alertBox = document.getElementById('chatStatusAlert');
+
+        if (!pesan) return;
+
+        alertBox.style.display = 'none';
+
+        // 1. Tampilkan bubble pesan pengguna
+        const userHtml = `
+            <div class="d-flex gap-2 mb-3 justify-content-end">
+                <div class="p-3 rounded-3 text-white shadow-sm" style="background: var(--blue-primary); max-width: 85%;">
+                    <p class="small mb-0">${escapeHtml(pesan)}</p>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', userHtml);
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        input.value = '';
+
+        // 2. Tampilkan bubble loading indicator
+        const loadingId = 'loading-' + Date.now();
+        const loadingHtml = `
+            <div class="d-flex gap-2 mb-3" id="${loadingId}">
+                <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; background: var(--blue-primary); color: #fff;">
+                    <i class="bi bi-robot"></i>
+                </div>
+                <div class="p-3 rounded-3 shadow-sm" style="background: var(--bg-card); border: 1px solid var(--border-color);">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <span class="small text-muted ms-2">Dr. Cerdas sedang menganalisis menu gizi...</span>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', loadingHtml);
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch('/api/gemini-chat/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: pesan, history: chatHistory })
+            });
+
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.remove();
+
+            const data = await resp.json();
+
+            if (data.success) {
+                alertBox.style.display = 'none';
+                chatHistory.push({ role: 'user', text: pesan });
+                chatHistory.push({ role: 'model', text: data.reply });
+
+                const replyHtml = `
+                    <div class="d-flex gap-2 mb-3">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width: 32px; height: 32px; background: var(--blue-primary); color: #fff;">
+                            <i class="bi bi-hospital"></i>
+                        </div>
+                        <div class="p-3 rounded-3 shadow-sm" style="background: var(--bg-card); border: 1px solid var(--border-color); max-width: 88%;">
+                            <div class="d-flex align-items-center justify-content-between mb-1 gap-2">
+                                <div class="fw-bold small" style="color: var(--blue-primary);">Dr. Cerdas:</div>
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.68rem;">
+                                    <i class="bi bi-stars me-1"></i>${escapeHtml(data.model_used || 'Google Gemini AI')}
+                                </span>
+                            </div>
+                            <div class="small leading-relaxed" style="color: var(--text-body); white-space: pre-line;">${formatMarkdown(data.reply)}</div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', replyHtml);
+            } else {
+                alertBox.textContent = data.error || 'Gagal memperoleh jawaban konsultasi.';
+                alertBox.style.display = 'block';
+            }
+        } catch (err) {
+            const loadingEl = document.getElementById(loadingId);
+            if (loadingEl) loadingEl.remove();
+
+            alertBox.textContent = 'Gagal menghubungi server: ' + err.message;
+            alertBox.style.display = 'block';
+        } finally {
+            btn.disabled = false;
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function formatMarkdown(text) {
+        if (!text) return '';
+        let escaped = escapeHtml(text);
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        return escaped;
+    }
+</script>
+{% endblock %}

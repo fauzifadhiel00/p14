@@ -1,0 +1,388 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Antropometri Balita & Stunting - Si-Cerdas{% endblock %}
+
+{% block header_title %}
+<h1 class="h4 fw-bold mb-0" style="color: var(--text-heading);">Dashboard Eksplorasi Antropometri Balita</h1>
+<p class="small text-muted mb-0">Pemantauan status gizi balita, standar WHO, dan data surveilans Jawa Barat</p>
+{% endblock %}
+
+{% block content %}
+<!-- =========================================================================
+     ZONA 1: DATA TERKINI JAWA BARAT (2019 - 2025)
+     ========================================================================= -->
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: var(--border-color) !important;">
+        <h2 class="h5 fw-bold mb-0" style="color: var(--text-heading);">
+            <i class="bi bi-geo-alt-fill text-primary me-2"></i>Data Terkini Jawa Barat (2019–2025)
+        </h2>
+    </div>
+
+    <!-- 2 KPI CARDS JABAR DINKES -->
+    <div class="row g-3 mb-4">
+        <!-- KPI 1: Stunting Jabar 2025 -->
+        <div class="col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Stunting Jawa Barat (2025)</span>
+                    <div class="kpi-icon-wrap" style="background: var(--color-danger-bg); color: var(--color-danger);">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                </div>
+                <div class="kpi-value text-danger">{{ jabar_stats.total_stunting_2025_formatted|default:"190.241" }} <span style="font-size: 1.1rem; font-weight: 600;">Jiwa</span></div>
+                <div class="kpi-footer text-danger">
+                    <i class="bi bi-geo-alt-fill"></i>
+                    <span>Dinas Kesehatan Provinsi Jawa Barat (TB/U)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 2: Gizi Kurang Jabar 2025 -->
+        <div class="col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Gizi Kurang / Underweight (2025)</span>
+                    <div class="kpi-icon-wrap" style="background: var(--color-warning-bg); color: var(--color-warning);">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                </div>
+                <div class="kpi-value text-warning">{{ jabar_stats.total_gizi_2025_formatted|default:"168.685" }} <span style="font-size: 1.1rem; font-weight: 600;">Jiwa</span></div>
+                <div class="kpi-footer text-warning">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    <span>Dinas Kesehatan Provinsi Jawa Barat (BB/U)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2 GRAFIK EPIDEMIOLOGI JABAR -->
+    <div class="row g-4 mb-4">
+        <!-- Chart Tren 7 Tahun Jabar -->
+        <div class="col-lg-6">
+            <div class="bento-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-bar-chart-fill text-primary me-2"></i>Tren Kasus 7 Tahun (2019–2025)
+                    </h3>
+                </div>
+                <div style="position: relative; height: 280px;">
+                    <canvas id="chartJabarTrend" aria-label="Grafik Tren Stunting dan Gizi Kurang Jabar" role="img"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chart Top 10 Wilayah Stunting Jabar -->
+        <div class="col-lg-6">
+            <div class="bento-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-geo-alt-fill text-danger me-2"></i>Top 10 Wilayah Stunting Tertinggi
+                    </h3>
+                    <div class="d-flex align-items-center gap-2">
+                        <label for="filterTahunTop" class="small text-muted fw-semibold mb-0" style="font-size: 0.78rem;">Tahun:</label>
+                        <select id="filterTahunTop" class="form-select form-select-sm py-0 px-2 fw-semibold" style="width: auto; height: 30px; font-size: 0.82rem; border-color: var(--border-color); cursor: pointer;" aria-label="Saring Tahun Top 10">
+                            {% for y in jabar_stats.years reversed %}
+                            <option value="{{ y }}" {% if forloop.first %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div style="position: relative; height: 280px;">
+                    <canvas id="chartJabarTop" aria-label="Grafik Top 10 Wilayah Stunting Jabar" role="img"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- =========================================================================
+     ZONA 2: BENCHMARK DATASET LATIH & MODEL MACHINE LEARNING
+     ========================================================================= -->
+<div class="mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom" style="border-color: var(--border-color) !important;">
+        <h2 class="h5 fw-bold mb-0" style="color: var(--text-heading);">
+            <i class="bi bi-cpu-fill text-primary me-2"></i>Dataset Latih & Model Machine Learning
+        </h2>
+    </div>
+
+    <!-- 2 KPI CARDS ML -->
+    <div class="row g-3 mb-4">
+        <!-- KPI 3: Akurasi ML -->
+        <div class="col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Akurasi Pengujian Model</span>
+                    <div class="kpi-icon-wrap" style="background: var(--blue-light); color: var(--blue-primary);">
+                        <i class="bi bi-cpu-fill"></i>
+                    </div>
+                </div>
+                <div class="kpi-value text-primary">{{ test_acc }}</div>
+                <div class="kpi-footer text-primary">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Random Forest (100 Trees)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI 4: Total Sampel Data Latih -->
+        <div class="col-md-6">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-title">Total Data Latih</span>
+                    <div class="kpi-icon-wrap" style="background: var(--blue-light); color: var(--blue-primary);">
+                        <i class="bi bi-folder-check"></i>
+                    </div>
+                </div>
+                <div class="kpi-value" style="color: var(--text-heading);">{{ stats.total_rows_formatted|default:"120.999" }} <span style="font-size: 1.1rem; font-weight: 600;">Sampel</span></div>
+                <div class="kpi-footer text-secondary">
+                    <i class="bi bi-diagram-3-fill"></i>
+                    <span>4 Kategori Status Gizi Balita</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRAFIK STANDAR WHO (FULL WIDTH) -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="bento-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h3 class="h6 fw-bold mb-0" style="color: var(--text-heading);">
+                        <i class="bi bi-graph-up text-primary me-2"></i>Kurva Pertumbuhan Antropometri WHO (0–60 Bulan)
+                    </h3>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle" style="font-size: 0.72rem;">Standar Baku Ideal WHO MGRS</span>
+                </div>
+                <div style="position: relative; height: 320px;">
+                    <canvas id="chartWhoCurve" aria-label="Kurva Pertumbuhan WHO" role="img"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- BANNER PINTAS KE HALAMAN RIWAYAT PEMERIKSAAN REAL-TIME -->
+    <div class="p-3 rounded-4 d-flex flex-wrap justify-content-between align-items-center gap-3" style="background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: var(--card-shadow);">
+        <div class="d-flex align-items-center gap-3">
+            <div class="kpi-icon-wrap" style="background: var(--color-success-bg); color: var(--color-success);">
+                <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+                <h3 class="h6 fw-bold mb-0" style="color: var(--text-heading);">Surveilans & Riwayat Pemeriksaan Balita Real-Time</h3>
+                <p class="small text-muted mb-0">Catatan penimbangan balita dan hasil klasifikasi Machine Learning tersimpan di halaman terpisah.</p>
+            </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="pill-badge pill-blue">{{ jabar_stats.total_realtime }} Total Data</span>
+            <a href="{% url 'riwayat' %}" class="btn btn-sm btn-primary rounded-pill px-3 fw-bold text-nowrap">
+                Buka Halaman Riwayat <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- JSON DATA ISLANDS (Clean separation to eliminate IDE / VS Code syntax errors) -->
+<script id="data-who-curve" type="application/json">{{ who_curve_json|safe }}</script>
+<script id="data-jabar-years" type="application/json">{{ jabar_years_json|safe }}</script>
+<script id="data-jabar-stunting" type="application/json">{{ jabar_stunting_json|safe }}</script>
+<script id="data-jabar-gizi" type="application/json">{{ jabar_gizi_json|safe }}</script>
+<script id="data-top-labels" type="application/json">{{ jabar_top_labels_json|safe }}</script>
+<script id="data-top-values" type="application/json">{{ jabar_top_values_json|safe }}</script>
+<script id="data-top-by-year" type="application/json">{{ jabar_top_by_year_json|safe }}</script>
+
+<script>
+    // =========================================================================
+    // THEME-AWARE CHART.JS CONFIGURATION
+    // Colors adapt dynamically when user switches Light <-> Dark Mode
+    // =========================================================================
+    function getThemeColors() {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        return {
+            grid: isDark ? '#334155' : '#F1F5F9',
+            text: isDark ? '#94A3B8' : '#64748B',
+            bgCard: isDark ? '#1E293B' : '#FFFFFF'
+        };
+    }
+
+    let colors = getThemeColors();
+
+    // 1. KURVA STANDAR PERTUMBUHAN WHO (AREA LINE CHART DENGAN GRADIENT FILL)
+    const whoData = JSON.parse(document.getElementById('data-who-curve').textContent || '[]');
+    const whoLabels = whoData.map(d => d.umur + ' Bln');
+    const whoMedian = whoData.map(d => d.laki_laki);
+    const whoMinNorm = whoData.map(d => d.min_normal);
+    const whoMaxNorm = whoData.map(d => d.max_normal);
+
+    const ctxWho = document.getElementById('chartWhoCurve').getContext('2d');
+    const gradWho = ctxWho.createLinearGradient(0, 0, 0, 300);
+    gradWho.addColorStop(0, 'rgba(37, 99, 235, 0.25)');
+    gradWho.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
+
+    const chartWho = new Chart(ctxWho, {
+        type: 'line',
+        data: {
+            labels: whoLabels,
+            datasets: [
+                {
+                    label: 'Batas Atas (+2 SD)',
+                    data: whoMaxNorm,
+                    borderColor: '#38BDF8',
+                    borderWidth: 1.5,
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.3
+                },
+                {
+                    label: 'Median WHO (Ideal)',
+                    data: whoMedian,
+                    borderColor: '#2563EB',
+                    backgroundColor: gradWho,
+                    borderWidth: 2.5,
+                    pointBackgroundColor: '#2563EB',
+                    pointRadius: 3,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Ambang Stunting (-2 SD)',
+                    data: whoMinNorm,
+                    borderColor: '#EF4444',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { position: 'top', labels: { color: colors.text, boxWidth: 12, font: { family: 'Plus Jakarta Sans', weight: '600' } } }
+            },
+            scales: {
+                y: { grid: { color: colors.grid }, ticks: { color: colors.text }, title: { display: true, text: 'Tinggi (cm)', color: colors.text } },
+                x: { grid: { display: false }, ticks: { color: colors.text } }
+            }
+        }
+    });
+
+    // 2. TREN 7 TAHUN JABAR (GROUPED BAR CHART)
+    const jabarYears = JSON.parse(document.getElementById('data-jabar-years').textContent || '[]');
+    const jabarStunting = JSON.parse(document.getElementById('data-jabar-stunting').textContent || '[]');
+    const jabarGizi = JSON.parse(document.getElementById('data-jabar-gizi').textContent || '[]');
+    const ctxJabar = document.getElementById('chartJabarTrend').getContext('2d');
+    const chartJabar = new Chart(ctxJabar, {
+        type: 'bar',
+        data: {
+            labels: jabarYears.map(y => 'Tahun ' + y),
+            datasets: [
+                {
+                    label: 'Stunting (TB/U)',
+                    data: jabarStunting,
+                    backgroundColor: '#EF4444',
+                    borderRadius: 8
+                },
+                {
+                    label: 'Gizi Kurang (BB/U)',
+                    data: jabarGizi,
+                    backgroundColor: '#3B82F6',
+                    borderRadius: 8
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { color: colors.text, boxWidth: 12, font: { family: 'Plus Jakarta Sans', weight: '600' } } }
+            },
+            scales: {
+                y: { grid: { color: colors.grid }, ticks: { color: colors.text } },
+                x: { grid: { display: false }, ticks: { color: colors.text } }
+            }
+        }
+    });
+
+    // 4. TOP 10 KABUPATEN/KOTA STUNTING JABAR DENGAN FILTER TAHUN REAL-TIME
+    const topByYear = JSON.parse(document.getElementById('data-top-by-year').textContent || '{}');
+    const filterSelect = document.getElementById('filterTahunTop');
+    const initialYear = filterSelect ? filterSelect.value : '2025';
+
+    const initialTopLabels = (topByYear[initialYear] && topByYear[initialYear].labels) || JSON.parse(document.getElementById('data-top-labels').textContent || '[]');
+    const initialTopValues = (topByYear[initialYear] && topByYear[initialYear].values) || JSON.parse(document.getElementById('data-top-values').textContent || '[]');
+
+    const ctxTop = document.getElementById('chartJabarTop').getContext('2d');
+    const chartTop = new Chart(ctxTop, {
+        type: 'bar',
+        data: {
+            labels: initialTopLabels,
+            datasets: [{
+                label: 'Balita Stunting (' + initialYear + ')',
+                data: initialTopValues,
+                backgroundColor: '#2563EB',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function (ctx) {
+                            return ' ' + Number(ctx.raw).toLocaleString('id-ID') + ' balita';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: colors.grid }, ticks: { color: colors.text } },
+                y: { grid: { display: false }, ticks: { color: colors.text, font: { size: 10 } } }
+            }
+        }
+    });
+
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function () {
+            const selectedY = this.value;
+            if (topByYear[selectedY]) {
+                chartTop.data.labels = topByYear[selectedY].labels;
+                chartTop.data.datasets[0].data = topByYear[selectedY].values;
+                chartTop.data.datasets[0].label = 'Balita Stunting (' + selectedY + ')';
+                chartTop.update();
+            }
+        });
+    }
+
+    // =========================================================================
+    // DYNAMIC RE-THEMING FOR ALL CHARTS ON THEME SWITCH
+    // =========================================================================
+    window.addEventListener('themeChanged', function (e) {
+        const c = getThemeColors();
+
+        [chartWho, chartJabar, chartTop].forEach(ch => {
+            if (ch && ch.options && ch.options.scales) {
+                if (ch.options.scales.x) {
+                    if (ch.options.scales.x.ticks) ch.options.scales.x.ticks.color = c.text;
+                    if (ch.options.scales.x.grid && ch.options.scales.x.grid.color) ch.options.scales.x.grid.color = c.grid;
+                }
+                if (ch.options.scales.y) {
+                    if (ch.options.scales.y.ticks) ch.options.scales.y.ticks.color = c.text;
+                    if (ch.options.scales.y.grid) ch.options.scales.y.grid.color = c.grid;
+                }
+                if (ch.options.plugins && ch.options.plugins.legend && ch.options.plugins.legend.labels) {
+                    ch.options.plugins.legend.labels.color = c.text;
+                }
+                ch.update();
+            }
+        });
+    });
+</script>
+{% endblock %}
