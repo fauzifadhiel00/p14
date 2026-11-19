@@ -19,7 +19,7 @@ Proyek ini merupakan pengembangan langsung dari portofolio praktikum:
 * **Modul P10 (Machine Learning Evaluation & Mini Project Proposal)**: Topik deteksi stunting pertama kali diusulkan dan diuji pada bagian *Pengembangan Praktikum P10* menggunakan dataset `data_balita.csv`. Catatan perbaikan P10 (menambahkan fitur tinggi badan) telah diimplementasikan penuh.
 * **Modul P09 & P11 (Ensemble Machine Learning Pipeline)**: Menggunakan algoritma *Random Forest Classifier* (100 *decision trees*) dengan validasi silang (stratified split) sehingga mencapai akurasi uji 99.9%.
 * **Modul P13 (AI Assistant & NLP/RAG Concept)**: Pemanfaatan asisten cerdas berbasis aturan klinis terstruktur untuk memberikan edukasi interaktif pencegahan stunting.
-* **Modul 14 (Deployment Model ke Aplikasi Web Nyata)**: Menerapkan pemisahan model (pengetahuan) dan antarmuka web, di mana model dibekukan ke `model_stunting.joblib` dan disajikan via framework web Django (serta tersedia alternatif Streamlit).
+* **Modul 14 (Deployment Model ke Aplikasi Web Nyata)**: Menerapkan pemisahan model (pengetahuan) dan antarmuka web, di mana model dibekukan ke `model_stunting.joblib` dan disajikan via framework web Django.
 
 ---
 
