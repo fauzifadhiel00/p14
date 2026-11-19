@@ -1,6 +1,6 @@
 #  Si-Cerdas Balita: Aplikasi Deteksi Dini Stunting & AI Nutritional Advisor
 
-> **Tugas Pengembangan Sistem Cerdas — Implementasi Web Framework Django**  
+> **Tugas Pengembangan Sistem Cerdas - Implementasi Web Framework Django**  
 > Program Studi Teknologi Informasi · Politeknik Negeri Madiun (PNM)
 
 ---
