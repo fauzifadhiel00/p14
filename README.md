@@ -52,8 +52,7 @@ Sesuai 4 pilar ketentuan penugasan:
 
 Secara umum, cara kerja sistem dari awal pengguna memasukkan data balita sampai mendapatkan saran nutrisi terbagi dalam 4 langkah mudah:
 
-```mermaid
-flowchart TD
+
     A["1. Input Data Balita<br/>(Nama, Umur, Gender, TB, BB)"] --> B["2. Pemrosesan Data di Django"]
     
     subgraph Proses ["Proses Cerdas di Backend"]
